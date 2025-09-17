@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Natures Treasure — Weekly Content Approval</title>
+  <style>
+    * { box-sizing: border-box; margin:0; padding:0; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:linear-gradient(135deg,#f7faf9,#eef5f0); color:#1f2937; min-height:100vh; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .header { background:linear-gradient(135deg,#093921,#0f4a2b); color:#fff; border-radius:16px; padding:22px; box-shadow:0 8px 32px rgba(9,57,33,.25); margin-bottom:18px; }
+    .header-row { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+    .logo { width:120px; height:60px; background:rgba(255,255,255,.1); border:2px dashed rgba(255,255,255,.3); border-radius:10px; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+    .logo img{ width:100%; height:100%; object-fit:contain; }
+    .title { flex:1; }
+    .title h1{ font-weight:300; font-size:1.9rem; line-height:1.2; }
+    .title p{ opacity:.9; }
+    .nav { display:flex; gap:8px; flex-wrap:wrap; }
+    .btn { padding:10px 14px; border:0; border-radius:10px; font-weight:700; cursor:pointer; }
+    .btn.primary { background:#fff; color:#093921; }
+    .btn.ghost { background:transparent; color:#fff; border:1.5px solid rgba(255,255,255,.6); }
+    .btn.danger { background:#7f1d1d; color:#fff; }
+    .btn[disabled]{ opacity:.6; cursor:not-allowed; }
+    .statusbar { display:flex; gap:24px; align-items:center; background:#fff; border-radius:14px; padding:16px; box-shadow:0 6px 18px rgba(0,0,0,.06); margin-bottom:16px; }
+    .pill { background:#f3f4f6; border-radius:999px; padding:6px 12px; font-size:.9rem; }
+    .count { font-weight:800; margin-right:6px; }
+    .ok { color:#0f5132; background:#d1e7dd; }
+    .warn { color:#664d03; background:#fff3cd; }
+    .bad { color:#842029; background:#f8d7da; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:16px; }
+    .card { background:#fff; border-radius:16px; box-shadow:0 6px 18px rgba(0,0,0,.06); overflow:hidden; }
+    .card-hd { padding:12px 14px; background:linear-gradient(180deg,#f8fafb,#f1f5f9); border-bottom:1px solid #e5e7eb; display:flex; align-items:center; gap:10px; }
+    .badge-day { background:#093921; color:#fff; padding:6px 12px; border-radius:999px; font-weight:800; font-size:.85rem; }
+    .chip { padding:4px 8px; border-radius:8px; font-weight:800; font-size:.75rem; text-transform:uppercase; letter-spacing:.4px; }
+    .chip.post{ background:#e3f2fd; color:#1976d2; }
+    .chip.carousel{ background:#f3e5f5; color:#7b1fa2; }
+    .chip.video{ background:#fff3e0; color:#f57c00; }
+    .card-bd { padding:14px; }
+    .media { background:#f9fafb; border:2px dashed #e5e7eb; border-radius:10px; height:220px; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; }
+    .media img{ max-width:100%; max-height:100%; object-fit:contain; }
+    .media iframe{ width:100%; height:100%; border:0; }
+    .media-actions { position:absolute; right:8px; top:8px; display:flex; gap:8px; }
+    .iconbtn { background:rgba(0,0,0,.55); color:#fff; border:none; border-radius:10px; padding:8px 10px; font-size:.8rem; cursor:pointer; }
+    .caption { font-size:.95rem; color:#374151; line-height:1.5; margin:10px 0 12px; white-space:pre-wrap; }
+    .act-row { display:flex; gap:8px; }
+    .btn.approve{ background:#093921; color:#fff; flex:1; }
+    .btn.reject{ background:#810000; color:#fff; flex:1; }
+    .status { margin-top:10px; padding:8px 12px; text-align:center; border-radius:999px; font-weight:800; font-size:.85rem; }
+    .status.pending{ background:#fff3cd; color:#664d03; }
+    .status.approved{ background:#d1e7dd; color:#0f5132; }
+    .status.rejected{ background:#f8d7da; color:#842029; }
+    .comment { margin-top:10px; display:none; }
+    .comment textarea{ width:100%; min-height:70px; padding:10px; border:1px solid #e5e7eb; border-radius:10px; font:inherit; }
+    .track { display:flex; gap:8px; height:100%; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; padding:8px; }
+    .slide { flex:0 0 100%; height:100%; scroll-snap-align:center; display:flex; align-items:center; justify-content:center; background:#fff; border:1px solid #eee; border-radius:8px; overflow:hidden; }
+    .cnav { position:absolute; inset:0; display:flex; justify-content:space-between; align-items:center; pointer-events:none; padding:0 4px; }
+    .cbtn { pointer-events:auto; background:rgba(0,0,0,.5); color:#fff; border:none; border-radius:999px; width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+    .banner { margin-bottom:12px; background:#fff; border-left:6px solid #0f4a2b; padding:12px 14px; border-radius:8px; box-shadow:0 4px 14px rgba(0,0,0,.05); display:none; }
+    .banner.warn{ border-left-color:#f59e0b; }
+    .banner.err{ border-left-color:#ef4444; }
+    .small { font-size:.9rem; opacity:.85; }
+    .notes { background:#fff; border-radius:14px; padding:16px; box-shadow:0 6px 18px rgba(0,0,0,.06); margin-top:16px; }
+    .toggle { display:flex; gap:10px; align-items:center; margin-top:8px; }
+    .footer { text-align:center; color:#093921; margin:20px 0 8px; font-weight:700; }
+    .footer small{ display:block; color:#0f4a2b; opacity:.9; }
+    @media (max-width:768px){ .grid{ grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-row">
+        <div class="logo" title="Client Logo (set LOGO_URL in code or add ?logo=)">
+          <img id="logoImg" alt="Logo placeholder" />
+        </div>
+        <div class="title">
+          <h1>Natures Treasure — Weekly Content Approval</h1>
+          <p class="small" id="subtitle">Loading active week…</p>
+        </div>
+        <div class="nav">
+          <button class="btn primary" id="btnActive">Active Week</button>
+          <button class="btn ghost" id="btnPrev">See Previous Week</button>
+          <button class="btn ghost" id="btnNext">Check Next Week</button>
+          <!-- admin-only -->
+          <button class="btn danger" id="btnReleaseNext" style="display:none;">Release Next Week</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Banners -->
+    <div class="banner" id="banner"></div>
+
+    <!-- Status bar -->
+    <div class="statusbar">
+      <span class="pill ok"><span class="count" id="nApproved">0</span>Approved</span>
+      <span class="pill warn"><span class="count" id="nPending">0</span>Pending</span>
+      <span class="pill bad"><span class="count" id="nRejected">0</span>Rejected</span>
+      <span class="pill"><span class="count" id="nTotal">0</span>Total</span>
+      <span class="pill" id="viewModePill">Mode: Active</span>
+    </div>
+
+    <!-- Cards -->
+    <div class="grid" id="grid"></div>
+
+    <!-- “More to say?” -->
+    <div class="notes">
+      <h3>Do you have more to say?</h3>
+      <div class="toggle">
+        <label><input type="radio" name="more" value="no" checked> No</label>
+        <label><input type="radio" name="more" value="yes"> Yes</label>
+      </div>
+      <div id="moreBox" style="display:none; margin-top:10px;">
+        <textarea id="moreNote" placeholder="Tell us more…" style="width:100%; min-height:90px; padding:10px; border:1px solid #e5e7eb; border-radius:10px;"></textarea>
+        <div style="margin-top:10px; display:flex; gap:8px;">
+          <button class="btn primary" id="btnSubmitMore">Send to Sky Q</button>
+        </div>
+        <div class="small" style="margin-top:6px;">Thanks! Sky Q will reach out for a call or physical meeting.</div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      Created by Sky Q — a Sky Q property
+      <small>To reach us, call <strong>07026710999</strong></small>
+    </div>
+  </div>
+
+<script>
+/* ===== CONFIG ===== */
+const SCRIPT_BASE = 'https://script.google.com/macros/s/AKfycbwL38tROtxr_MBb71-kZxVtx3aQBglCpye7cX0Z-aynwsGnIOhg3hyQ3VhhWTxKWkRS/exec'; // <-- your live deployment
+const LOGO_URL    = ''; // or pass ?logo=... in the URL
+const CLIENT_NAME = 'Natures Treasure';
+
+/* ===== State ===== */
+let activeWeek = '';
+let currentWeek = '';
+let viewMode = 'active'; // 'active' | 'prev'
+let items = [];
+let ADMIN = false;
+
+/* ===== Utilities ===== */
+function qs(s){ return document.querySelector(s); }
+function qsa(s){ return Array.from(document.querySelectorAll(s)); }
+function showBanner(msg, type='info'){
+  const el = qs('#banner'); el.className = 'banner' + (type==='warn'?' warn': type==='err'?' err':''); el.textContent = msg; el.style.display='block';
+  clearTimeout(showBanner._t); showBanner._t = setTimeout(()=>{ el.style.display='none'; }, 4000);
+}
+function parseYMD(s){
+  const [y,m,d] = String(s).split('-').map(n=>parseInt(n,10));
+  if(!y||!m||!d) return null;
+  return new Date(y, m-1, d);
+}
+function prevMonday(week){
+  const d = parseYMD(week); if(!d) return '';
+  d.setDate(d.getDate()-7);
+  return d.toISOString().slice(0,10);
+}
+function nextMonday(week){
+  const d = parseYMD(week); if(!d) return '';
+  d.setDate(d.getDate()+7);
+  return d.toISOString().slice(0,10);
+}
+function extractDriveId(url){
+  const s = String(url||'');
+  let m = s.match(/\/d\/([a-zA-Z0-9_-]+)/); if(m) return m[1];
+  m = s.match(/[?&]id=([a-zA-Z0-9_-]+)/); if(m) return m[1];
+  return null;
+}
+function makeDownloadLink(link){
+  const id = extractDriveId(link);
+  return id ? `https://drive.google.com/uc?export=download&id=${id}` : link;
+}
+
+/* ===== API ===== */
+async function apiGet(path){
+  const res = await fetch(`${SCRIPT_BASE}${path}`);
+  if (!res.ok) throw new Error('Network error');
+  return res.json();
+}
+async function apiPost(payload){
+  const res = await fetch(SCRIPT_BASE, {
+    method:'POST',
+    headers:{ 'Content-Type':'text/plain;charset=utf-8' }, // avoid preflight
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error('Network error');
+  return res.json();
+}
+
+/* ===== Media renderers ===== */
+function toEmbedHTML(link, type){
+  const s = String(link||'');
+  const id = extractDriveId(s);
+
+  // Google Drive folder links → fallback clickable
+  if (!id && s.includes('drive.google.com/drive/folders')) {
+    return `<a href="${s}" target="_blank" rel="noopener">Open Drive folder</a>`;
+  }
+
+  if(!id){
+    // unknown host/file — try as image, fallback to plain link on error
+    const safe = s.replace(/"/g,'&quot;');
+    return `<img src="${safe}" alt="media" loading="lazy" onerror="this.outerHTML='<a href=&quot;${safe}&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;>Open link</a>'" />`;
+  }
+
+  if(type !== 'video'){
+    const src = `https://drive.google.com/uc?export=view&id=${id}`;
+    return `<img src="${src}" alt="media" loading="lazy" />`;
+  }
+
+  const src = `https://drive.google.com/file/d/${id}/preview`;
+  return `<iframe src="${src}" allow="autoplay" allowfullscreen></iframe>`;
+}
+function toCarouselHTML(links, type){
+  const id = Math.random().toString(36).slice(2);
+  const slides = links.map(l => `<div class="slide">${toEmbedHTML(l, type)}</div>`).join('');
+  return `
+    <div class="media" id="media-${id}">
+      <div class="track" id="${id}">${slides}</div>
+      <div class="cnav">
+        <button class="cbtn" onclick="scrollCarousel('${id}',-1)">&lt;</button>
+        <button class="cbtn" onclick="scrollCarousel('${id}', 1)">&gt;</button>
+      </div>
+      <div class="media-actions">
+        <button class="iconbtn" onclick="goFullscreen('media-${id}')">Fullscreen</button>
+        <a class="iconbtn" href="${makeDownloadLink(links[0])}" target="_blank" rel="noopener">Download</a>
+      </div>
+    </div>
+  `;
+}
+function scrollCarousel(id, dir){
+  const el = document.getElementById(id); if(!el) return;
+  const w = el.clientWidth; el.scrollBy({ left: dir*w, behavior:'smooth' });
+}
+function goFullscreen(elId){
+  const el = document.getElementById(elId);
+  if(!el) return;
+  if (el.requestFullscreen) el.requestFullscreen();
+}
+
+/* ===== UI render ===== */
+function render(){
+  const approved = items.filter(x=>x.status==='approved').length;
+  const pending  = items.filter(x=>x.status==='pending').length;
+  const rejected = items.filter(x=>x.status==='rejected').length;
+
+  qs('#nApproved').textContent = approved;
+  qs('#nPending').textContent  = pending;
+  qs('#nRejected').textContent = rejected;
+  qs('#nTotal').textContent    = items.length;
+  qs('#viewModePill').textContent = 'Mode: ' + (viewMode==='prev' ? 'Previous (read-only)' : 'Active');
+  qs('#subtitle').textContent = `Week starting ${currentWeek}`;
+
+  const grid = qs('#grid'); grid.innerHTML = '';
+  items.forEach(it => {
+    const links = String(it.drive_urls||'')
+      .split(/[\n,]/) // allow comma OR newline separated
+      .map(s=>s.trim()).filter(Boolean);
+
+    const type  = it.type || 'post';
+    const media = (type==='carousel' && links.length>1)
+      ? toCarouselHTML(links, type)
+      : `
+        <div class="media" id="media-${it.id}">
+          ${links.length ? toEmbedHTML(links[0], type) : 'No media link'}
+          <div class="media-actions">
+            <button class="iconbtn" onclick="goFullscreen('media-${it.id}')">Fullscreen</button>
+            ${links.length ? `<a class="iconbtn" href="${makeDownloadLink(links[0])}" target="_blank" rel="noopener">Download</a>`:''}
+          </div>
+        </div>
+      `;
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="card-hd">
+        <span class="badge-day">${it.day_label||''}</span>
+        <span class="chip ${type}">${(type||'post').toUpperCase()}</span>
+      </div>
+      <div class="card-bd">
+        ${media}
+        <div class="caption">${(it.caption||'').replace(/\\n/g, '\n')}</div>
+        <div class="act-row">
+          <button class="btn approve" ${viewMode==='prev'?'disabled':''} onclick="approve('${it.id}')">✓ Approve</button>
+          <button class="btn reject" ${viewMode==='prev'?'disabled':''} onclick="rejectIt('${it.id}')">✗ Reject</button>
+        </div>
+        <div class="status ${it.status||'pending'}" id="status-${it.id}">
+          ${(it.status||'pending').charAt(0).toUpperCase() + (it.status||'pending').slice(1)}
+        </div>
+        <div class="comment" id="comment-${it.id}">
+          <textarea placeholder="Please provide feedback for rejection..."></textarea>
+        </div>
+      </div>
+    `;
+    grid.appendChild(card);
+
+    if (it.status === 'rejected') {
+      qs(`#comment-${it.id}`).style.display = 'block';
+      qs(`#comment-${it.id} textarea`).value = it.comment || '';
+      if (viewMode==='prev') qs(`#comment-${it.id} textarea`).setAttribute('disabled','');
+      else qs(`#comment-${it.id} textarea`).addEventListener('input', (e)=>{
+        window._pendingComments = window._pendingComments || {};
+        window._pendingComments[it.id] = e.target.value;
+      });
+    }
+  });
+}
+function setStatusLocally(id, status){
+  const it = items.find(x=>String(x.id)===String(id)); if(!it) return;
+  it.status = status;
+  const st = qs(`#status-${id}`);
+  if (st){
+    st.className = 'status ' + status;
+    st.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+  }
+}
+
+/* ===== Actions ===== */
+async function approve(id){
+  if (viewMode==='prev') return;
+  const it = items.find(x=>String(x.id)===String(id)); if(!it) return;
+  const prev = it.status;
+  setStatusLocally(id,'approved');
+  try{
+    const out = await apiPost({ route:'update_decision', id, status:'approved', comment:'' });
+    if (!out.ok) throw new Error(out.reason||'Update failed');
+    await loadWeek(currentWeek); // refresh counters & scaffold if last one
+  }catch(err){
+    setStatusLocally(id, prev);
+    showBanner(err.message || 'Could not approve. Please try again.', 'err');
+  }
+}
+async function rejectIt(id){
+  if (viewMode==='prev') return;
+  const it = items.find(x=>String(x.id)===String(id)); if(!it) return;
+  const prev = it.status;
+  setStatusLocally(id,'rejected');
+  const box = qs(`#comment-${id}`); if (box) box.style.display='block';
+  const val = (window._pendingComments && window._pendingComments[id]) || '';
+  try{
+    const out = await apiPost({ route:'update_decision', id, status:'rejected', comment: val });
+    if (!out.ok) throw new Error(out.reason||'Update failed');
+    await loadWeek(currentWeek);
+  }catch(err){
+    setStatusLocally(id, prev);
+    showBanner(err.message || 'Could not reject. Please try again.', 'err');
+  }
+}
+
+/* ===== Week loading & nav ===== */
+async function loadActive(){
+  viewMode = 'active';
+  const data = await apiGet('?route=content'); // backend uses active if none provided
+  activeWeek = data.active_week || data.week_start;
+  currentWeek = data.week_start;
+  items = (data.items||[]).map(n => ({ ...n, id:String(n.id||''), status:String(n.status||'pending').toLowerCase() }));
+  setButtons();
+  render();
+}
+async function loadWeek(week){
+  const data = await apiGet(`?route=content&week_start=${encodeURIComponent(week)}`);
+  currentWeek = data.week_start;
+  items = (data.items||[]).map(n => ({ ...n, id:String(n.id||''), status:String(n.status||'pending').toLowerCase() }));
+  render();
+}
+async function goPrev(){
+  if (!activeWeek) activeWeek = (await apiGet('?route=active_week')).active_week || currentWeek;
+  const prev = prevMonday(activeWeek);
+  viewMode = 'prev';
+  await loadWeek(prev);
+  setButtons();
+  showBanner('Showing previous week (read-only).', 'warn');
+}
+async function goActive(){
+  await loadActive();
+  showBanner('Back to active week.');
+}
+/* Show next only when actually released (client-safe) */
+async function checkNext(){
+  if (!activeWeek) activeWeek = (await apiGet('?route=active_week')).active_week || currentWeek;
+  const nxt = nextMonday(activeWeek);
+  const active = (await apiGet('?route=active_week')).active_week;
+  if (active !== nxt){
+    showBanner('Next week isn’t available yet — Sky Q hasn’t released it.', 'warn');
+    return;
+  }
+  viewMode = 'active';
+  await loadWeek(nxt);
+  activeWeek = nxt;
+  setButtons();
+  showBanner('Now viewing the newly released week.');
+}
+/* Admin-only: release next week (set Monday On) */
+async function releaseNext(){
+  if (!activeWeek) activeWeek = (await apiGet('?route=active_week')).active_week || currentWeek;
+  const nxt = nextMonday(activeWeek);
+  try{
+    const out = await apiPost({ route:'set_active_week', week_start: nxt });
+    if (!out.ok) throw new Error(out.reason || 'Could not release next week');
+    await loadActive();
+    showBanner('Next week released and set active.');
+  }catch(err){
+    showBanner(err.message || 'Failed to release next week.', 'err');
+  }
+}
+function setButtons(){
+  qs('#btnActive').disabled = (viewMode==='active' && currentWeek===activeWeek);
+}
+
+/* ===== “More to say?” ===== */
+function setupMore(){
+  qsa('input[name="more"]').forEach(r=>{
+    r.addEventListener('change', e=>{
+      qs('#moreBox').style.display = (e.target.value==='yes') ? 'block' : 'none';
+    });
+  });
+  qs('#btnSubmitMore').addEventListener('click', async ()=>{
+    const note = qs('#moreNote').value.trim();
+    try{
+      const out = await apiPost({ route:'contact_request', week_start: currentWeek, note });
+      if (!out.ok) throw new Error(out.reason || 'Could not send');
+      showBanner('Thanks! Sky Q will reach out as soon as possible.');
+      qs('#moreNote').value = '';
+      qsa('input[name="more"]').find(x=>x.value==='no').checked = true;
+      qs('#moreBox').style.display = 'none';
+    }catch(err){
+      showBanner(err.message || 'Failed to send. Try again.', 'err');
+    }
+  });
+}
+
+/* ===== Init ===== */
+(async function init(){
+  // admin switch & logo via URL params
+  const params = new URLSearchParams(location.search);
+  ADMIN = params.get('admin') === '1';
+  const urlLogo = params.get('logo');
+  const src = urlLogo || LOGO_URL;
+  if (src) qs('#logoImg').src = src; else qs('#logoImg').alt = 'Add your logo: set LOGO_URL or use ?logo=URL';
+
+  // nav
+  qs('#btnPrev').addEventListener('click', goPrev);
+  qs('#btnActive').addEventListener('click', goActive);
+  qs('#btnNext').addEventListener('click', checkNext);
+
+  // admin button
+  const relBtn = qs('#btnReleaseNext');
+  if (ADMIN) { relBtn.style.display='inline-block'; relBtn.addEventListener('click', releaseNext); }
+
+  setupMore();
+  await loadActive();
+})();
+</script>
+</body>
+</html>
