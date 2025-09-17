@@ -62,7 +62,7 @@
     .status.approved{ background:#d1e7dd; color:#0f5132; }
     .status.rejected{ background:#f8d7da; color:#842029; }
 
-    .comment { margin-top:10px; display:none; }
+    .comment { margin-top:10px; }
     .comment textarea{ width:100%; min-height:70px; padding:10px; border:1px solid #e5e7eb; border-radius:10px; font:inherit; }
 
     /* Carousel */
@@ -99,6 +99,7 @@
           <button class="btn primary" id="btnActive">Active Week</button>
           <button class="btn ghost" id="btnPrev">See Previous Week</button>
           <button class="btn ghost" id="btnNext">Check Next Week</button>
+          <button class="btn" id="btnDone" style="background:#0f4a2b;color:#fff;">Finish</button>
           <!-- admin-only -->
           <button class="btn danger" id="btnReleaseNext" style="display:none;">Release Next Week</button>
         </div>
@@ -205,73 +206,54 @@ async function apiPost(payload){
   return res.json();
 }
 
-/* ===== Media renderers ===== */
+/* ===== Media helpers ===== */
+// Return ONLY the inner media element (img/iframe/a), not the .media wrapper.
 function toEmbedHTML(link, type){
   const url = String(link||'').trim();
+  const safe = url.replace(/"/g,'&quot;');
   const lowerType = String(type||'post').toLowerCase();
 
-  // Folder link → open as link
+  // Drive folder → link
   if (url.includes('drive.google.com/drive/folders/')) {
-    const safe = url.replace(/"/g,'&quot;');
-    return `
-      <div class="media">
-        <div class="spinner" aria-hidden="true"></div>
-        <a href="${safe}" target="_blank" rel="noopener noreferrer" style="position:relative; z-index:1;">Open Drive folder</a>
-      </div>`;
+    return `<a href="${safe}" target="_blank" rel="noopener noreferrer">Open Drive folder</a>`;
   }
 
-  // Extract Drive file ID (supports /file/d/ID and ?id=ID)
+  // Try to extract a Drive file id
   const m1 = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
   const m2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
   const id = m1 ? m1[1] : (m2 ? m2[1] : null);
 
-  // Non-Drive URL → try as image, fallback to plain link
+  // Non-Drive host → try image, fallback to plain link
   if (!id) {
-    const safe = url.replace(/"/g,'&quot;');
-    return `
-      <div class="media">
-        <div class="spinner" aria-hidden="true"></div>
-        <img src="${safe}" alt="media" loading="lazy" decoding="async" referrerpolicy="no-referrer"
-             onload="this.previousElementSibling?.remove()"
-             onerror="this.outerHTML='<a href=&quot;${safe}&quot; target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot;>Open link</a>'"/>
-      </div>`;
+    return `<img src="${safe}" alt="media" loading="lazy" decoding="async" referrerpolicy="no-referrer"
+             onload="this.closest('.media')?.querySelector('.spinner')?.remove()"
+             onerror="this.outerHTML='<a href=&quot;${safe}&quot; target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot;>Open link</a>'" />`;
   }
 
-  // Videos → use Drive preview iframe
+  // Videos → Drive preview iframe
   if (lowerType === 'video') {
     const src = `https://drive.google.com/file/d/${id}/preview`;
-    return `
-      <div class="media">
-        <div class="spinner" aria-hidden="true"></div>
-        <iframe src="${src}" loading="lazy" allow="autoplay" allowfullscreen
-                referrerpolicy="no-referrer"
-                onload="this.previousElementSibling?.remove()"></iframe>
-        <div class="media-actions">
-          <a class="iconbtn" href="${makeDownloadLink(url)}" target="_blank" rel="noopener noreferrer">Download</a>
-        </div>
-      </div>`;
+    return `<iframe src="${src}" loading="lazy" allow="autoplay" allowfullscreen referrerpolicy="no-referrer"
+            onload="this.closest('.media')?.querySelector('.spinner')?.remove()"></iframe>`;
   }
 
-  // Images → try direct image endpoint; if blocked, auto-fallback to preview iframe
+  // Images → direct view; onerror→fallback to preview iframe
   const imgSrc = `https://drive.google.com/uc?export=view&id=${id}`;
   const iframeSrc = `https://drive.google.com/file/d/${id}/preview`;
-  const onErr = `this.outerHTML='<iframe src=&quot;${iframeSrc}&quot; loading=&quot;lazy&quot; allow=&quot;autoplay&quot; allowfullscreen referrerpolicy=&quot;no-referrer&quot; onload=&quot;this.previousElementSibling?.remove()&quot;></iframe>'`;
-  return `
-    <div class="media">
-      <div class="spinner" aria-hidden="true"></div>
-      <img src="${imgSrc}" alt="media" loading="lazy" decoding="async" referrerpolicy="no-referrer"
-           onload="this.previousElementSibling?.remove()"
-           onerror="${onErr}"/>
-      <div class="media-actions">
-        <button class="iconbtn" onclick="goFullscreen(this.closest('.media').id)">Fullscreen</button>
-        <a class="iconbtn" href="${makeDownloadLink(url)}" target="_blank" rel="noopener noreferrer">Download</a>
-      </div>
-    </div>`;
+  const onErr = `this.outerHTML='<iframe src=&quot;${iframeSrc}&quot; loading=&quot;lazy&quot; allow=&quot;autoplay&quot; allowfullscreen referrerpolicy=&quot;no-referrer&quot; onload=&quot;this.closest(\\'.media\\')?.querySelector(\\'.spinner\\')?.remove()&quot;></iframe>'`;
+  return `<img src="${imgSrc}" alt="media" loading="lazy" decoding="async" referrerpolicy="no-referrer"
+          onload="this.closest('.media')?.querySelector('.spinner')?.remove()" onerror="${onErr}" />`;
 }
 
 function toCarouselHTML(links, type){
   const id = Math.random().toString(36).slice(2);
-  const slides = links.map(l => `<div class="slide">${toEmbedHTML(l, type)}</div>`).join('');
+  const slides = links.map(l => `
+    <div class="slide">
+      <div class="media" id="media-${id}-${Math.random().toString(36).slice(2)}">
+        <div class="spinner" aria-hidden="true"></div>
+        ${toEmbedHTML(l, type)}
+      </div>
+    </div>`).join('');
   const dl = links.length ? makeDownloadLink(links[0]) : '#';
   return `
     <div class="media" id="media-${id}">
@@ -297,16 +279,20 @@ function goFullscreen(elId){
   if (el.requestFullscreen) el.requestFullscreen();
 }
 
-/* ===== UI render ===== */
-function render(){
+/* ===== Counters (no reload) ===== */
+function updateCounters(){
   const approved = items.filter(x=>x.status==='approved').length;
   const pending  = items.filter(x=>x.status==='pending').length;
   const rejected = items.filter(x=>x.status==='rejected').length;
-
   qs('#nApproved').textContent = approved;
   qs('#nPending').textContent  = pending;
   qs('#nRejected').textContent = rejected;
   qs('#nTotal').textContent    = items.length;
+}
+
+/* ===== UI render ===== */
+function render(){
+  updateCounters();
   qs('#viewModePill').textContent = 'Mode: ' + (viewMode==='prev' ? 'Previous (read-only)' : 'Active');
   qs('#subtitle').textContent = `Week starting ${currentWeek}`;
 
@@ -317,13 +303,24 @@ function render(){
       .map(s=>s.trim()).filter(Boolean);
 
     const type  = it.type || 'post';
-    const media = (type==='carousel' && links.length>1)
-      ? toCarouselHTML(links, type)
-      : (() => {
-          const id = `media-${it.id}`;
-          const inner = links.length ? toEmbedHTML(links[0], type) : '<div class="media"><div class="spinner"></div> No media link</div>';
-          return `<div class="media" id="${id}">${inner}</div>`;
-        })();
+
+    let mediaHTML = '';
+    if (type === 'carousel' && links.length > 1) {
+      mediaHTML = toCarouselHTML(links, type);
+    } else {
+      const inner = links.length ? toEmbedHTML(links[0], type) : 'No media link';
+      const id = `media-${it.id}`;
+      const dl = links.length ? makeDownloadLink(links[0]) : '#';
+      mediaHTML = `
+        <div class="media" id="${id}">
+          <div class="spinner" aria-hidden="true"></div>
+          ${inner}
+          <div class="media-actions">
+            <button class="iconbtn" onclick="goFullscreen('${id}')">Fullscreen</button>
+            ${links.length ? `<a class="iconbtn" href="${dl}" target="_blank" rel="noopener noreferrer">Download</a>` : ''}
+          </div>
+        </div>`;
+    }
 
     const card = document.createElement('div');
     card.className = 'card';
@@ -333,7 +330,7 @@ function render(){
         <span class="chip ${type}">${(type||'post').toUpperCase()}</span>
       </div>
       <div class="card-bd">
-        ${media}
+        ${mediaHTML}
         <div class="caption">${(it.caption||'').replace(/\\n/g, '\n')}</div>
         <div class="act-row">
           <button class="btn approve" ${viewMode==='prev'?'disabled':''} onclick="approve('${it.id}')">✓ Approve</button>
@@ -343,20 +340,26 @@ function render(){
           ${(it.status||'pending').charAt(0).toUpperCase() + (it.status||'pending').slice(1)}
         </div>
         <div class="comment" id="comment-${it.id}">
-          <textarea placeholder="Please provide feedback for rejection..."></textarea>
+          <textarea placeholder="Leave a comment (auto-saves)…"></textarea>
         </div>
       </div>
     `;
     grid.appendChild(card);
 
-    if (it.status === 'rejected') {
-      qs(`#comment-${it.id}`).style.display = 'block';
-      qs(`#comment-${it.id} textarea`).value = it.comment || '';
-      if (viewMode==='prev') qs(`#comment-${it.id} textarea`).setAttribute('disabled','');
-      else qs(`#comment-${it.id} textarea`).addEventListener('input', (e)=>{
-        window._pendingComments = window._pendingComments || {};
-        window._pendingComments[it.id] = e.target.value;
-      });
+    // comments: always visible + auto-save
+    const ta = card.querySelector(`#comment-${it.id} textarea`);
+    if (ta){
+      ta.value = it.comment || '';
+      if (viewMode==='prev') {
+        ta.setAttribute('disabled','');
+      } else {
+        ta.addEventListener('input', (e)=>{
+          const v = e.target.value;
+          window._pendingComments = window._pendingComments || {};
+          window._pendingComments[it.id] = v;
+          debounce(`cmt-${it.id}`, ()=> saveComment(it.id, v));
+        });
+      }
     }
   });
 }
@@ -368,18 +371,37 @@ function setStatusLocally(id, status){
     st.className = 'status ' + status;
     st.textContent = status.charAt(0).toUpperCase() + status.slice(1);
   }
+  updateCounters();
 }
 
-/* ===== Actions ===== */
+/* ===== Debounce + save comment ===== */
+const _debouncers = {};
+function debounce(key, fn, delay=500){
+  clearTimeout(_debouncers[key]);
+  _debouncers[key] = setTimeout(fn, delay);
+}
+async function saveComment(id, comment){
+  const it = items.find(x=>String(x.id)===String(id)); if(!it) return;
+  try{
+    let out = await apiPost({ route: 'update_comment', id, comment });
+    if (!out.ok && out.reason === 'unknown_route'){
+      out = await apiPost({ route:'update_decision', id, status: it.status, comment });
+    }
+    if (!out.ok) throw new Error(out.reason || 'Failed saving comment');
+  }catch(err){
+    showBanner(err.message || 'Could not save comment.', 'err');
+  }
+}
+
+/* ===== Actions (no reloads) ===== */
 async function approve(id){
   if (viewMode==='prev') return;
   const it = items.find(x=>String(x.id)===String(id)); if(!it) return;
   const prev = it.status;
-  setStatusLocally(id,'approved');
+  setStatusLocally(id,'approved'); // optimistic
   try{
-    const out = await apiPost({ route:'update_decision', id, status:'approved', comment:'' });
+    const out = await apiPost({ route:'update_decision', id, status:'approved', comment: (window._pendingComments && window._pendingComments[id]) || '' });
     if (!out.ok) throw new Error(out.reason||'Update failed');
-    await loadWeek(currentWeek); // refresh counters & scaffold if last one
   }catch(err){
     setStatusLocally(id, prev);
     showBanner(err.message || 'Could not approve. Please try again.', 'err');
@@ -389,13 +411,11 @@ async function rejectIt(id){
   if (viewMode==='prev') return;
   const it = items.find(x=>String(x.id)===String(id)); if(!it) return;
   const prev = it.status;
-  setStatusLocally(id,'rejected');
-  const box = qs(`#comment-${id}`); if (box) box.style.display='block';
+  setStatusLocally(id,'rejected'); // optimistic
   const val = (window._pendingComments && window._pendingComments[id]) || '';
   try{
     const out = await apiPost({ route:'update_decision', id, status:'rejected', comment: val });
     if (!out.ok) throw new Error(out.reason||'Update failed');
-    await loadWeek(currentWeek);
   }catch(err){
     setStatusLocally(id, prev);
     showBanner(err.message || 'Could not reject. Please try again.', 'err');
@@ -462,6 +482,33 @@ function setButtons(){
   qs('#btnActive').disabled = (viewMode==='active' && currentWeek===activeWeek);
 }
 
+/* ===== “Finish” submission ===== */
+async function finishWeek(){
+  const summary = {
+    week_start: currentWeek,
+    totals: {
+      approved: items.filter(x=>x.status==='approved').length,
+      pending:  items.filter(x=>x.status==='pending').length,
+      rejected: items.filter(x=>x.status==='rejected').length,
+      total:    items.length
+    },
+    items: items.map(x => ({
+      id: x.id, day_label: x.day_label, type: x.type,
+      status: x.status, caption: x.caption || '',
+      comment: (window._pendingComments && window._pendingComments[x.id]) || x.comment || '',
+      drive_urls: x.drive_urls || ''
+    }))
+  };
+
+  try{
+    const out = await apiPost({ route:'mark_week_done', payload: summary });
+    if (!out.ok) throw new Error(out.reason || 'Could not submit');
+    showBanner('Submitted! Your approvals for this week were sent to the Sheet.');
+  }catch(err){
+    showBanner(err.message || 'Failed to submit. Try again.', 'err');
+  }
+}
+
 /* ===== “More to say?” ===== */
 function setupMore(){
   qsa('input[name="more"]').forEach(r=>{
@@ -497,6 +544,7 @@ function setupMore(){
   qs('#btnPrev').addEventListener('click', goPrev);
   qs('#btnActive').addEventListener('click', goActive);
   qs('#btnNext').addEventListener('click', checkNext);
+  qs('#btnDone').addEventListener('click', finishWeek);
 
   // admin button
   const relBtn = qs('#btnReleaseNext');
