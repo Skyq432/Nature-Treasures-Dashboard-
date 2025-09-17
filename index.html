@@ -189,14 +189,38 @@ async function apiPost(payload){
 }
 
 /* ===== Media renderers ===== */
+<script>
 function toEmbedHTML(link, type){
-  const s = String(link||'');
-  const id = extractDriveId(s);
-
-  // Google Drive folder links → fallback clickable
-  if (!id && s.includes('drive.google.com/drive/folders')) {
-    return `<a href="${s}" target="_blank" rel="noopener">Open Drive folder</a>`;
+  const url = String(link||'').trim();
+  // Folder link → open as link
+  if (url.includes('drive.google.com/drive/folders/')) {
+    return `<a href="${url}" target="_blank" rel="noopener">Open Drive folder</a>`;
   }
+
+  // Extract Drive file ID (supports /file/d/ID and ?id=ID)
+  const m1 = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  const m2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  const id = m1 ? m1[1] : (m2 ? m2[1] : null);
+
+  // Non-Drive URL → try as image, fallback to plain link
+  if (!id) {
+    const safe = url.replace(/"/g,'&quot;');
+    return `<img src="${safe}" alt="media" loading="lazy"
+            onerror="this.outerHTML='<a href=&quot;${safe}&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;>Open link</a>'" />`;
+  }
+
+  // Videos → use Drive preview iframe
+  if (String(type).toLowerCase() === 'video') {
+    return `<iframe src="https://drive.google.com/file/d/${id}/preview" allow="autoplay" allowfullscreen></iframe>`;
+  }
+
+  // Images → try direct image endpoint; if blocked, auto-fallback to preview iframe
+  const imgSrc = `https://drive.google.com/uc?export=view&id=${id}`;
+  const iframeSrc = `https://drive.google.com/file/d/${id}/preview`;
+  return `<img src="${imgSrc}" alt="media" loading="lazy"
+          onerror="this.outerHTML='<iframe src=&quot;${iframeSrc}&quot; allow=&quot;autoplay&quot; allowfullscreen></iframe>'" />`;
+}
+
 
   if(!id){
     // unknown host/file — try as image, fallback to plain link on error
