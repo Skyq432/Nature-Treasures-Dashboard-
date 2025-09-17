@@ -8,6 +8,8 @@
     * { box-sizing: border-box; margin:0; padding:0; }
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:linear-gradient(135deg,#f7faf9,#eef5f0); color:#1f2937; min-height:100vh; }
     .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+    /* Header */
     .header { background:linear-gradient(135deg,#093921,#0f4a2b); color:#fff; border-radius:16px; padding:22px; box-shadow:0 8px 32px rgba(9,57,33,.25); margin-bottom:18px; }
     .header-row { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
     .logo { width:120px; height:60px; background:rgba(255,255,255,.1); border:2px dashed rgba(255,255,255,.3); border-radius:10px; display:flex; align-items:center; justify-content:center; overflow:hidden; }
@@ -21,12 +23,16 @@
     .btn.ghost { background:transparent; color:#fff; border:1.5px solid rgba(255,255,255,.6); }
     .btn.danger { background:#7f1d1d; color:#fff; }
     .btn[disabled]{ opacity:.6; cursor:not-allowed; }
+
+    /* Status */
     .statusbar { display:flex; gap:24px; align-items:center; background:#fff; border-radius:14px; padding:16px; box-shadow:0 6px 18px rgba(0,0,0,.06); margin-bottom:16px; }
     .pill { background:#f3f4f6; border-radius:999px; padding:6px 12px; font-size:.9rem; }
     .count { font-weight:800; margin-right:6px; }
     .ok { color:#0f5132; background:#d1e7dd; }
     .warn { color:#664d03; background:#fff3cd; }
     .bad { color:#842029; background:#f8d7da; }
+
+    /* Cards */
     .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:16px; }
     .card { background:#fff; border-radius:16px; box-shadow:0 6px 18px rgba(0,0,0,.06); overflow:hidden; }
     .card-hd { padding:12px 14px; background:linear-gradient(180deg,#f8fafb,#f1f5f9); border-bottom:1px solid #e5e7eb; display:flex; align-items:center; gap:10px; }
@@ -36,11 +42,17 @@
     .chip.carousel{ background:#f3e5f5; color:#7b1fa2; }
     .chip.video{ background:#fff3e0; color:#f57c00; }
     .card-bd { padding:14px; }
+
+    /* Media + Spinner */
     .media { background:#f9fafb; border:2px dashed #e5e7eb; border-radius:10px; height:220px; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; }
     .media img{ max-width:100%; max-height:100%; object-fit:contain; }
     .media iframe{ width:100%; height:100%; border:0; }
+    .spinner { position:absolute; width:36px; height:36px; border:3px solid #e5e7eb; border-top-color:#093921; border-radius:50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
     .media-actions { position:absolute; right:8px; top:8px; display:flex; gap:8px; }
     .iconbtn { background:rgba(0,0,0,.55); color:#fff; border:none; border-radius:10px; padding:8px 10px; font-size:.8rem; cursor:pointer; }
+
     .caption { font-size:.95rem; color:#374151; line-height:1.5; margin:10px 0 12px; white-space:pre-wrap; }
     .act-row { display:flex; gap:8px; }
     .btn.approve{ background:#093921; color:#fff; flex:1; }
@@ -49,15 +61,20 @@
     .status.pending{ background:#fff3cd; color:#664d03; }
     .status.approved{ background:#d1e7dd; color:#0f5132; }
     .status.rejected{ background:#f8d7da; color:#842029; }
+
     .comment { margin-top:10px; display:none; }
     .comment textarea{ width:100%; min-height:70px; padding:10px; border:1px solid #e5e7eb; border-radius:10px; font:inherit; }
+
+    /* Carousel */
     .track { display:flex; gap:8px; height:100%; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; padding:8px; }
     .slide { flex:0 0 100%; height:100%; scroll-snap-align:center; display:flex; align-items:center; justify-content:center; background:#fff; border:1px solid #eee; border-radius:8px; overflow:hidden; }
     .cnav { position:absolute; inset:0; display:flex; justify-content:space-between; align-items:center; pointer-events:none; padding:0 4px; }
     .cbtn { pointer-events:auto; background:rgba(0,0,0,.5); color:#fff; border:none; border-radius:999px; width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+
     .banner { margin-bottom:12px; background:#fff; border-left:6px solid #0f4a2b; padding:12px 14px; border-radius:8px; box-shadow:0 4px 14px rgba(0,0,0,.05); display:none; }
     .banner.warn{ border-left-color:#f59e0b; }
     .banner.err{ border-left-color:#ef4444; }
+
     .small { font-size:.9rem; opacity:.85; }
     .notes { background:#fff; border-radius:14px; padding:16px; box-shadow:0 6px 18px rgba(0,0,0,.06); margin-top:16px; }
     .toggle { display:flex; gap:10px; align-items:center; margin-top:8px; }
@@ -189,12 +206,18 @@ async function apiPost(payload){
 }
 
 /* ===== Media renderers ===== */
-<script>
 function toEmbedHTML(link, type){
   const url = String(link||'').trim();
+  const lowerType = String(type||'post').toLowerCase();
+
   // Folder link → open as link
   if (url.includes('drive.google.com/drive/folders/')) {
-    return `<a href="${url}" target="_blank" rel="noopener">Open Drive folder</a>`;
+    const safe = url.replace(/"/g,'&quot;');
+    return `
+      <div class="media">
+        <div class="spinner" aria-hidden="true"></div>
+        <a href="${safe}" target="_blank" rel="noopener noreferrer" style="position:relative; z-index:1;">Open Drive folder</a>
+      </div>`;
   }
 
   // Extract Drive file ID (supports /file/d/ID and ?id=ID)
@@ -205,54 +228,65 @@ function toEmbedHTML(link, type){
   // Non-Drive URL → try as image, fallback to plain link
   if (!id) {
     const safe = url.replace(/"/g,'&quot;');
-    return `<img src="${safe}" alt="media" loading="lazy"
-            onerror="this.outerHTML='<a href=&quot;${safe}&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;>Open link</a>'" />`;
+    return `
+      <div class="media">
+        <div class="spinner" aria-hidden="true"></div>
+        <img src="${safe}" alt="media" loading="lazy" decoding="async" referrerpolicy="no-referrer"
+             onload="this.previousElementSibling?.remove()"
+             onerror="this.outerHTML='<a href=&quot;${safe}&quot; target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot;>Open link</a>'"/>
+      </div>`;
   }
 
   // Videos → use Drive preview iframe
-  if (String(type).toLowerCase() === 'video') {
-    return `<iframe src="https://drive.google.com/file/d/${id}/preview" allow="autoplay" allowfullscreen></iframe>`;
+  if (lowerType === 'video') {
+    const src = `https://drive.google.com/file/d/${id}/preview`;
+    return `
+      <div class="media">
+        <div class="spinner" aria-hidden="true"></div>
+        <iframe src="${src}" loading="lazy" allow="autoplay" allowfullscreen
+                referrerpolicy="no-referrer"
+                onload="this.previousElementSibling?.remove()"></iframe>
+        <div class="media-actions">
+          <a class="iconbtn" href="${makeDownloadLink(url)}" target="_blank" rel="noopener noreferrer">Download</a>
+        </div>
+      </div>`;
   }
 
   // Images → try direct image endpoint; if blocked, auto-fallback to preview iframe
   const imgSrc = `https://drive.google.com/uc?export=view&id=${id}`;
   const iframeSrc = `https://drive.google.com/file/d/${id}/preview`;
-  return `<img src="${imgSrc}" alt="media" loading="lazy"
-          onerror="this.outerHTML='<iframe src=&quot;${iframeSrc}&quot; allow=&quot;autoplay&quot; allowfullscreen></iframe>'" />`;
+  const onErr = `this.outerHTML='<iframe src=&quot;${iframeSrc}&quot; loading=&quot;lazy&quot; allow=&quot;autoplay&quot; allowfullscreen referrerpolicy=&quot;no-referrer&quot; onload=&quot;this.previousElementSibling?.remove()&quot;></iframe>'`;
+  return `
+    <div class="media">
+      <div class="spinner" aria-hidden="true"></div>
+      <img src="${imgSrc}" alt="media" loading="lazy" decoding="async" referrerpolicy="no-referrer"
+           onload="this.previousElementSibling?.remove()"
+           onerror="${onErr}"/>
+      <div class="media-actions">
+        <button class="iconbtn" onclick="goFullscreen(this.closest('.media').id)">Fullscreen</button>
+        <a class="iconbtn" href="${makeDownloadLink(url)}" target="_blank" rel="noopener noreferrer">Download</a>
+      </div>
+    </div>`;
 }
 
-
-  if(!id){
-    // unknown host/file — try as image, fallback to plain link on error
-    const safe = s.replace(/"/g,'&quot;');
-    return `<img src="${safe}" alt="media" loading="lazy" onerror="this.outerHTML='<a href=&quot;${safe}&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;>Open link</a>'" />`;
-  }
-
-  if(type !== 'video'){
-    const src = `https://drive.google.com/uc?export=view&id=${id}`;
-    return `<img src="${src}" alt="media" loading="lazy" />`;
-  }
-
-  const src = `https://drive.google.com/file/d/${id}/preview`;
-  return `<iframe src="${src}" allow="autoplay" allowfullscreen></iframe>`;
-}
 function toCarouselHTML(links, type){
   const id = Math.random().toString(36).slice(2);
   const slides = links.map(l => `<div class="slide">${toEmbedHTML(l, type)}</div>`).join('');
+  const dl = links.length ? makeDownloadLink(links[0]) : '#';
   return `
     <div class="media" id="media-${id}">
       <div class="track" id="${id}">${slides}</div>
       <div class="cnav">
-        <button class="cbtn" onclick="scrollCarousel('${id}',-1)">&lt;</button>
-        <button class="cbtn" onclick="scrollCarousel('${id}', 1)">&gt;</button>
+        <button class="cbtn" onclick="scrollCarousel('${id}',-1)" aria-label="Previous slide">&lt;</button>
+        <button class="cbtn" onclick="scrollCarousel('${id}', 1)" aria-label="Next slide">&gt;</button>
       </div>
       <div class="media-actions">
         <button class="iconbtn" onclick="goFullscreen('media-${id}')">Fullscreen</button>
-        <a class="iconbtn" href="${makeDownloadLink(links[0])}" target="_blank" rel="noopener">Download</a>
+        <a class="iconbtn" href="${dl}" target="_blank" rel="noopener noreferrer">Download</a>
       </div>
-    </div>
-  `;
+    </div>`;
 }
+
 function scrollCarousel(id, dir){
   const el = document.getElementById(id); if(!el) return;
   const w = el.clientWidth; el.scrollBy({ left: dir*w, behavior:'smooth' });
@@ -285,15 +319,11 @@ function render(){
     const type  = it.type || 'post';
     const media = (type==='carousel' && links.length>1)
       ? toCarouselHTML(links, type)
-      : `
-        <div class="media" id="media-${it.id}">
-          ${links.length ? toEmbedHTML(links[0], type) : 'No media link'}
-          <div class="media-actions">
-            <button class="iconbtn" onclick="goFullscreen('media-${it.id}')">Fullscreen</button>
-            ${links.length ? `<a class="iconbtn" href="${makeDownloadLink(links[0])}" target="_blank" rel="noopener">Download</a>`:''}
-          </div>
-        </div>
-      `;
+      : (() => {
+          const id = `media-${it.id}`;
+          const inner = links.length ? toEmbedHTML(links[0], type) : '<div class="media"><div class="spinner"></div> No media link</div>';
+          return `<div class="media" id="${id}">${inner}</div>`;
+        })();
 
     const card = document.createElement('div');
     card.className = 'card';
