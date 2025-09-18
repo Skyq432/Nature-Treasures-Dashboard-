@@ -160,6 +160,18 @@
         </div>
       </div>
     </div>
+    
+    <!-- Change Week (arrow bar at top) -->
+    <div class="actions" style="margin-bottom:18px;">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; width:100%;">
+        <strong>Change week:</strong>
+        <button class="btn btn-secondary" onclick="wkGoPrev()" aria-label="Previous week">←</button>
+        <div id="wk-current-label" class="stat-label" style="min-width:220px;">Loading…</div>
+        <button class="btn btn-secondary" onclick="wkGoNext()" aria-label="Next week">→</button>
+        <div class="spacer"></div>
+        <div id="notice" class="stat-label"></div>
+      </div>
+    </div>
 
     <!-- Progress -->
     <div class="progress-tracker">
@@ -252,6 +264,11 @@ let currentWeek = '';
 let items = [];
 let isSubmitted = false;
 let lastSubmitPayload = null;
+  // Arrow-based week nav
+let wkActive = '';      // server's active Monday (Y-M-D)
+let wkOffset = 0;       // 0 = active week, -1 = last week, -2 = last two weeks, +1 = next week, etc.
+let wkViewing = '';     // the Monday Y-M-D we are currently showing
+
 
 /* =========================
    HELPERS
@@ -265,6 +282,45 @@ function download(filename, text){
   const a = document.createElement('a'); a.href=url; a.download=filename;
   document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
 }
+
+// --- Week/date helpers (arrow nav) ---
+function wkPad2(n){ return String(n).padStart(2,'0'); }
+function wkToYMD(dt){ return `${dt.getFullYear()}-${wkPad2(dt.getMonth()+1)}-${wkPad2(dt.getDate())}`; }
+function wkParseYMD(s){ const [y,m,d]=(s||'').split('-').map(n=>parseInt(n,10)); if(!y||!m||!d) return null; return new Date(y, m-1, d); }
+function wkAddDays(d, n){ const t = new Date(d.getTime()); t.setDate(t.getDate()+n); return t; }
+function wkAddWeeksYMD(ymd, weeks){ const d = wkParseYMD(ymd); return d ? wkToYMD(wkAddDays(d, weeks*7)) : ''; }
+
+function wkSetLabel(ymd, prefix){
+  const el = document.getElementById('wk-current-label');
+  const d = wkParseYMD(ymd);
+  el.textContent = d ? `${prefix}: Week of ${d.toDateString()}` : '';
+}
+
+function setNotice(text=''){
+  const el = document.getElementById('notice');
+  if(el) el.textContent = text || '';
+}
+
+function enforceReadOnlyUI(readOnly){
+  // Disable Approve/Reject buttons
+  document.querySelectorAll('.btn-approve, .btn-reject').forEach(btn=>{
+    if(readOnly){ btn.setAttribute('disabled',''); btn.style.opacity='.6'; btn.style.cursor='not-allowed'; }
+    else{ btn.removeAttribute('disabled'); btn.style.opacity=''; btn.style.cursor=''; }
+  });
+  // Hide comment toggles when read-only
+  document.querySelectorAll('.comment-toggle').forEach(a=>{
+    a.style.display = readOnly ? 'none' : 'inline-block';
+  });
+  if(readOnly){
+    document.querySelectorAll('.comment-section').forEach(sec=>{ sec.style.display='none'; });
+  }
+}
+
+function wkMondayReleased(items){
+  const mon = (items||[]).find(r => String(r.day_label||'').toLowerCase().startsWith('mon'));
+  return mon ? String(mon.released||'').toLowerCase() === 'on' : false;
+}
+
 
 /* =========================
    API
@@ -614,17 +670,90 @@ function downloadLastPayload(){
 /* =========================
    WEEK LOADERS
    ========================= */
+
+async function wkLoadWeek(weekYMD, readOnly){
+  // Fetch a specific week and render
+  const data = await apiGet(`?route=content&week_start=${encodeURIComponent(weekYMD)}`);
+  const arr = data.items || [];
+  wkViewing = weekYMD;
+  currentWeek = weekYMD; // keep existing references happy
+  items = arr.map(n => ({ ...n, id:String(n.id||''), status:String(n.status||'pending').toLowerCase() }));
+  renderCards();
+  syncSubmitBtn();
+  enforceReadOnlyUI(!!readOnly);
+  const isActive = (weekYMD === wkActive);
+  wkSetLabel(weekYMD, isActive ? 'This Week' : 'Viewing');
+}
+
+async function wkGoPrev(){
+  // Try to go further into the past: -1, -2, ...
+  const target = wkAddWeeksYMD(wkActive, wkOffset - 1);
+  // Probe if any rows exist
+  const probe = await apiGet(`?route=content&week_start=${encodeURIComponent(target)}`);
+  if(!probe.items || !probe.items.length){
+    setNotice('No more previous weeks.');
+    return;
+  }
+  wkOffset -= 1;
+  setNotice('Last week' + (wkOffset < -1 ? ` (${Math.abs(wkOffset)} weeks ago)` : ''));
+  await wkLoadWeek(target, true); // past weeks are read-only
+}
+
+async function wkGoNext(){
+  // Try to go into the future: +1, +2, ...
+  const target = wkAddWeeksYMD(wkActive, wkOffset + 1);
+  const probe = await apiGet(`?route=content&week_start=${encodeURIComponent(target)}`);
+  const hasRows = !!(probe.items && probe.items.length);
+  const released = hasRows && wkMondayReleased(probe.items);
+
+  if(!hasRows){
+    setNotice('Sky Q haven’t released it yet.');
+    return;
+  }
+  if(!released){
+    setNotice('Sky Q haven’t released it yet.');
+    return;
+  }
+
+  // Week exists and Monday is ON → confirm promotion to make it the active week
+  const ok = confirm('Switching will make this “new week” become This Week, and the current This Week become Last Week. Continue?');
+  if(!ok) return;
+
+  try{
+    const out = await apiPost({ route:'set_active_week', week_start: target });
+    if(!out.ok){ alert(out.reason||'Could not switch week'); return; }
+    // Refresh base truth from server
+    await loadActive();
+    // After switching, we are at the new active → reset offset and label
+    wkOffset = 0;
+    setNotice('New week set.');
+  }catch(err){
+    alert(err.message||'Could not switch week');
+  }
+}
+
 async function loadActive(){
   const data = await apiGet('?route=content');
   activeWeek = data.active_week || data.week_start;
   currentWeek= data.week_start;
+
+  // Ensure arrow nav core state is ready
+  wkActive  = activeWeek;       // base Monday from server
+  wkOffset  = 0;                // viewing “This Week”
+  wkViewing = activeWeek;
+  // Set the top bar label and clear any notices
+  if (typeof wkSetLabel === 'function') wkSetLabel(wkViewing, 'This Week');
+  if (typeof setNotice === 'function') setNotice('');
+
   items = (data.items||[]).map(n => ({
     ...n,
     id:String(n.id||''),
     status:String(n.status||'pending').toLowerCase()
   }));
-  renderCards(); syncSubmitBtn();
+  renderCards(); 
+  syncSubmitBtn();
 }
+
 
 /* =========================
    LOADER FUNCTIONS
@@ -650,6 +779,14 @@ function hideCardLoader(cardId) {
 document.addEventListener('DOMContentLoaded', async ()=>{
   document.getElementById('year').textContent = new Date().getFullYear();
   await loadActive().catch(err=>{ console.error(err); alert('Could not load content'); });
+  
+    // Initialize arrow navigation
+  wkActive  = activeWeek;   // server’s active Monday
+  wkOffset  = 0;            // start at “This Week”
+  wkViewing = activeWeek;
+  wkSetLabel(wkViewing, 'This Week');
+  setNotice('');
+
 });
 </script>
 </body>
